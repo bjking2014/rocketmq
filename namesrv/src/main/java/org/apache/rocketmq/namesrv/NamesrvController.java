@@ -52,9 +52,13 @@ import org.apache.rocketmq.remoting.netty.NettyServerConfig;
 import org.apache.rocketmq.remoting.netty.RequestTask;
 import org.apache.rocketmq.remoting.netty.TlsSystemConfig;
 import org.apache.rocketmq.srvutil.FileWatchService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NamesrvController {
     private static final InternalLogger LOGGER = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
+    private static final Logger log = LoggerFactory.getLogger(NamesrvController.class);
+
     private static final InternalLogger WATER_MARK_LOG = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_WATER_MARK_LOGGER_NAME);
 
     private final NamesrvConfig namesrvConfig;
@@ -102,10 +106,16 @@ public class NamesrvController {
 
     public boolean initialize() {
         loadConfig();
+        log.info("[rocketmq][namesrv启动][加载本地文件配置到内存]");
         initiateNetworkComponents();
+        log.info("[rocketmq][namesrv启动][构建netty通讯组件]");
         initiateThreadExecutors();
+        log.info("[rocketmq][namesrv启动][初始化线程池，处理broker请求的线程池，处理生产者、消费者请求的线程池]");
         registerProcessor();
+        log.info("[rocketmq][namesrv启动][给不同的请求注册对应的处理器]");
         startScheduleService();
+        log.info("[rocketmq][namesrv启动][初始化定时任务线程池完成]");
+
         initiateSslContext();
         initiateRpcHooks();
         return true;
@@ -118,9 +128,12 @@ public class NamesrvController {
     private void startScheduleService() {
         this.scanExecutorService.scheduleAtFixedRate(NamesrvController.this.routeInfoManager::scanNotActiveBroker,
             5, this.namesrvConfig.getScanNotActiveBrokerInterval(), TimeUnit.MILLISECONDS);
+        log.info("[rocketmq][namesrv启动][初始化扫描不活跃broker的线程池]间隔时间：{}毫秒",
+                this.namesrvConfig.getScanNotActiveBrokerInterval());
 
         this.scheduledExecutorService.scheduleAtFixedRate(NamesrvController.this.kvConfigManager::printAllPeriodically,
             1, 10, TimeUnit.MINUTES);
+        log.info("[rocketmq][namesrv启动][初始化打印kv配置信息的定时器]间隔时间：{}分钟", 10);
 
         this.scheduledExecutorService.scheduleAtFixedRate(() -> {
             try {
@@ -129,6 +142,7 @@ public class NamesrvController {
                 LOGGER.error("printWaterMark error.", e);
             }
         }, 10, 1, TimeUnit.SECONDS);
+        log.info("[rocketmq][namesrv启动][初始化打印水位信息定时器]间隔时间：{}秒", 1);
     }
 
     private void initiateNetworkComponents() {

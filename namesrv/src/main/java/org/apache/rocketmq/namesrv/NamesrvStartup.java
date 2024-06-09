@@ -24,6 +24,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+
+import com.alibaba.fastjson.JSON;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -41,9 +43,13 @@ import org.apache.rocketmq.remoting.netty.NettyServerConfig;
 import org.apache.rocketmq.remoting.protocol.RemotingCommand;
 import org.apache.rocketmq.srvutil.ServerUtil;
 import org.apache.rocketmq.srvutil.ShutdownHookThread;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 public class NamesrvStartup {
+
+    public static final Logger LOGGER = LoggerFactory.getLogger(NamesrvStartup.class);
 
     private static InternalLogger log;
     private static Properties properties = null;
@@ -54,6 +60,18 @@ public class NamesrvStartup {
 
     public static void main(String[] args) {
         main0(args);
+
+        String propertiesjson = JSON.toJSONString(properties);
+        String namesrvConfigjson = JSON.toJSONString(namesrvConfig);
+        String nettyServerConfigjson = JSON.toJSONString(nettyServerConfig);
+        String nettyClientConfigjson = JSON.toJSONString(nettyClientConfig);
+        String controllerConfigjson = JSON.toJSONString(controllerConfig);
+        LOGGER.info("[rocketmq配置][namesrv配置]propertiesjson={}", propertiesjson);
+        LOGGER.info("[rocketmq配置][namesrv配置]namesrvConfigjson={}", namesrvConfigjson);
+        LOGGER.info("[rocketmq配置][namesrv配置]nettyServerConfigjson={}", nettyServerConfigjson);
+        LOGGER.info("[rocketmq配置][namesrv配置]nettyClientConfigjson={}", nettyClientConfigjson);
+        LOGGER.info("[rocketmq配置][namesrv配置]controllerConfigjson={}", controllerConfigjson);
+
         controllerManagerMain();
     }
 
@@ -97,6 +115,8 @@ public class NamesrvStartup {
         controllerConfig = new ControllerConfig();
         if (commandLine.hasOption('c')) {
             String file = commandLine.getOptionValue('c');
+            log.info("[rocketmq][namesrv配置]启动命令行中有-c，加载配置文件的地址={}",file);
+
             if (file != null) {
                 InputStream in = new BufferedInputStream(Files.newInputStream(Paths.get(file)));
                 properties = new Properties();
@@ -128,11 +148,15 @@ public class NamesrvStartup {
             System.exit(-2);
         }
 
+        // 使用自定义Configurator，参考文档：https://www.jianshu.com/p/3b9cb5e22052
         LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
         JoranConfigurator configurator = new JoranConfigurator();
         configurator.setContext(lc);
         lc.reset();
         configurator.doConfigure(namesrvConfig.getRocketmqHome() + "/conf/logback_namesrv.xml");
+        LOGGER.info("[rocketmq][namesrv配置]清除logger context 已加载配置，重新加载默认配置{}",
+                namesrvConfig.getRocketmqHome() + "/conf/logback_namesrv.xml");
+
 
         log = InternalLoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
 
@@ -169,6 +193,7 @@ public class NamesrvStartup {
             System.exit(-3);
         }
 
+        // 注册钩子函数
         Runtime.getRuntime().addShutdownHook(new ShutdownHookThread(log, (Callable<Void>) () -> {
             controller.shutdown();
             return null;
