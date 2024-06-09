@@ -17,6 +17,9 @@
   -->
 
 <configuration scan="true" scanPeriod="30 seconds">
+    <!-- 自定义配置，目录需要改成自己的rocketmq_home -->
+    <property name="user.home" value="/Users/simple/config/rocketmq_home"/>
+
     <appender name="DefaultAppender"
               class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${user.home}/logs/rocketmqlogs/${brokerLogDir}/broker_default.log</file>
@@ -268,7 +271,7 @@
             <maxIndex>20</maxIndex>
         </rollingPolicy>
         <triggeringPolicy
-            class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+                class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
             <maxFileSize>128MB</maxFileSize>
         </triggeringPolicy>
         <encoder>
